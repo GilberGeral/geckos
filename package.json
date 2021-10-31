@@ -1,0 +1,21 @@
+{
+  "name": "space",
+  "version": "1.0.0",
+  "description": "game space conflict",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "game",
+    "space"
+  ],
+  "author": "gilber",
+  "license": "ISC",
+  "dependencies": {
+    "@geckos.io/client": "^2.1.0",
+    "@geckos.io/common": "^2.1.0",
+    "@geckos.io/server": "^2.1.0"
+  },
+  "type": "module"
+}
