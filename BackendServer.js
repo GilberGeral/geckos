@@ -13,6 +13,9 @@ const type_msg={
   SYNC:"sinc"
 }
 
+const ships =["arpia_arpia_main","ast_1_ast_1_main","ast_2_ast_2_main","ast_3_ast_3_main","ast_4_ast_4_main","ast_5_ast_5_main","ast_6_ast_6_main", "flea_flea_main", "gunner_gunner_main", "hawk_hawk_main", "raptor_raptor_main", "wasp_wasp_main" ];
+
+
 const max_rooms = 1;
 const players_per_room = 2;
 let rooms =[];
@@ -21,8 +24,8 @@ for(let _g=0; _g < max_rooms; _g+=1){
 }
 
 let gb_gamers=[];
-gb_gamers[0]={"nm":"pablo gonzales","user":"pablito", "pass":"1234"};
-gb_gamers[1]={"nm":"pablo gonzales","user":"juanito", "pass":"1234"};
+gb_gamers[0]={"nm":"pablo gonzales","user":"pablito", "pass":"1234","color":"1,0,0"};
+gb_gamers[1]={"nm":"juan alimaña","user":"juanito", "pass":"1234","color":"0,1,0"};
 
 function addPlayer( _a_key, _ch_id,_color='255,26,58',room_id=0){
   //por defecto SOLO una room
@@ -86,8 +89,8 @@ io.listen(8001); // default port is 9208
           _res.done = true;
           
           _res.nombre = _g.nm;
-          _res.a_key = (Math.random() + 1).toString(36).substring(7);;
-          _res.id_room = addPlayer(_res.a_key,channel.id,_data.c,channel.roomId);
+          _res.a_key = (Math.random() + 1).toString(36).substring(7);
+          _res.id_room = addPlayer(_res.a_key,channel.id,_g.color,channel.roomId);
           // console.log( _res );
           return;
         }
