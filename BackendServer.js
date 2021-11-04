@@ -10,11 +10,11 @@ const type_msg={
   UPDATE : "update",
   STOP : "stop",
   EXIT : "exit",
-  SYNC:"sinc"
+  SYNC:"sinc",
+  LIST:"list_players"
 }
 
-const ships =["arpia_arpia_main","ast_1_ast_1_main","ast_2_ast_2_main","ast_3_ast_3_main","ast_4_ast_4_main","ast_5_ast_5_main","ast_6_ast_6_main", "flea_flea_main", "gunner_gunner_main", "hawk_hawk_main", "raptor_raptor_main", "wasp_wasp_main" ];
-
+const ships =["arpia","ast_1","ast_2","ast_3","ast_4","ast_5","ast_6", "flea", "gunner", "hawk", "raptor", "wasp" ];
 
 const max_rooms = 1;
 const players_per_room = 2;
@@ -24,17 +24,18 @@ for(let _g=0; _g < max_rooms; _g+=1){
 }
 
 let gb_gamers=[];
-gb_gamers[0]={"nm":"pablo gonzales","user":"pablito", "pass":"1234","color":"1,0,0"};
-gb_gamers[1]={"nm":"juan alimaña","user":"juanito", "pass":"1234","color":"0,1,0"};
+gb_gamers[0]={"nm":"pablo gonzales","user":"pablito", "pass":"1234","color":"1,0,0","ship":"raptor"};
+gb_gamers[1]={"nm":"juan alimaña","user":"juanito", "pass":"1234","color":"0,1,0","ship":"wasp"};
 
-function addPlayer( _a_key, _ch_id,_color='255,26,58',room_id=0){
+function addPlayer( _a_key, _ch_id,_color='255,26,58',room_id=0,_ship = "raptor",_nombre="ND",_px=0,_pz=0){
   //por defecto SOLO una room
-  console.log( "ad player key "+_a_key+", room id "+room_id+"" );
+  console.log( "ad player key "+_a_key+", room id "+room_id+", nombre "+_nombre );
 
-  rooms[0].players.push({key:_a_key,ch:_ch_id,id_room:room_id,color:_color});
+  
+  rooms[0].players.push({key:_a_key,ch:_ch_id,id_room:room_id,color:_color,ship:_ship,name:_nombre,inix:_px,iniz:_pz});
 
-  rooms[0].players_public.push({key:_a_key,px:0.0,py:0.0,pz:0.0,rx:0.0,ry:0.0,rz:0.0,color:_color});
-  console.log( "largo room 0 de players "+rooms[0].players[0].ch );
+  rooms[0].players_public.push({key:_a_key,px:_px,py:0.0,pz:_pz,rx:0.0,ry:0.0,rz:0.0,color:_color,ship:_ship});
+  console.log( "largo room 0 de players "+rooms[0].players.length );
   return 0;
 }
 
@@ -57,6 +58,9 @@ function updatePlayer( _dt ){
   // console.log( rooms[0].players_public[_dt.c_key] );
 }
 
+function random(_min=1,_max=10){
+  return parseInt(Math.random() * (_max - _min) + _min);
+}
 
 
 io.listen(8001); // default port is 9208
@@ -69,7 +73,7 @@ io.listen(8001); // default port is 9208
     });
 
     channel.on(type_msg.DOOR, data => {
-      console.log(`${channel.id} arrived data ** `);
+      // console.log(`${channel.id} arrived data ** `);
       let _data ={"id_ch":channel.id,"mode":"guest"};
       // io.room(channel.roomId).emit(type_msg.DOOR, JSON.stringify(_data));
       channel.emit(type_msg.DOOR, JSON.stringify(_data));
@@ -81,24 +85,46 @@ io.listen(8001); // default port is 9208
       let _data = JSON.parse(data);
       console.log( " \n user login "+_data.u);
       
-      let _res={"done":false,"level":"1","nombre":"","ship":"main","color":"049015","id_room":"A","a_key":""};
+      let _res={"done":false,"level":"1","nombre":"","ship":"main","color":"","id_room":"A","a_key":"","ship":"","inix":"","iniz":""};
+      let _px = random();
+      let _pz = random();
 
-
-      gb_gamers.forEach(_g => {
-        if( _g.user == _data.u & _g.pass == _data.p ){
+      // gb_gamers.forEach(_g => {
+        // if( _g.user == _data.u & _g.pass == _data.p ){
+        // if( 1 == 1){
           _res.done = true;
           
-          _res.nombre = _g.nm;
+          _res.nombre = _data.u;
+          _res.ship = _data.shp;
+          _res.color = _data.c;
           _res.a_key = (Math.random() + 1).toString(36).substring(7);
-          _res.id_room = addPlayer(_res.a_key,channel.id,_g.color,channel.roomId);
+
+          _res.id_room = addPlayer(_res.a_key,channel.id,_res.color,channel.roomId,_res.ship,_res.nombre,_px,_pz);
+          _res.inix = _px;
+          _res.iniz = _pz;
           // console.log( _res );
-          return;
-        }
-      });
+          // return;
+          // break;
+        // }
+      // });
 
       // io.room(channel.roomId).emit('login', JSON.stringify(_res));
       channel.emit(type_msg.LOGIN, JSON.stringify(_res));
+      // io.emit(type_msg.SYNC, JSON.stringify(rooms[0].players_public));
+      let _list =[];
+      console.log( "players actuales " );
+      console.log( rooms[0].players );
+      rooms[0].players.forEach(_pl => {
+        if( _pl.name != "ND" ){
+          _list.push({key:_pl.key,color:_pl.color,ship:_pl.ship,name:_pl.name,u:0,px:_pl.inix,pz:_pl.iniz});
+        }        
+      });
+
+      setTimeout(() => {
+        io.emit(type_msg.LIST,JSON.stringify(_list) );
+      }, 200);
       
+
     });
 
     channel.on(type_msg.UPDATE, _msg => {
