@@ -34,7 +34,7 @@ function addPlayer( _a_key, _ch_id,_color='255,26,58',room_id=0,_ship = "raptor"
   
   rooms[0].players.push({key:_a_key,ch:_ch_id,id_room:room_id,color:_color,ship:_ship,name:_nombre,inix:_px,iniz:_pz});
 
-  rooms[0].players_public.push({key:_a_key,px:_px,py:0.0,pz:_pz,rx:0.0,ry:0.0,rz:0.0,color:_color,ship:_ship});
+  rooms[0].players_public.push({key:_a_key,px:_px,py:0.0,pz:_pz,rx:0.0,ry:0.0,rz:0.0,color:_color,ship:_ship,lf:0.0});
   console.log( "largo room 0 de players "+rooms[0].players.length );
   return 0;
 }
@@ -50,6 +50,7 @@ function updatePlayer( _dt ){
       rooms[0].players_public[_p].px= _dt.px;
       rooms[0].players_public[_p].py= _dt.py;
       rooms[0].players_public[_p].pz= _dt.pz;
+      rooms[0].players_public[_p].lf= _dt.lf;
       break;
     }
     
