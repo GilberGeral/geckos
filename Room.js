@@ -7,6 +7,7 @@ class Room {
     this.players = [];
     this.players_public = [];
     this.ids = [];
+    this.bullets =[];
   }
 
   loop(){

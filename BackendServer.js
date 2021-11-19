@@ -13,7 +13,8 @@ const type_msg={
   EXIT : "exit",
   SYNC:"sinc",
   LIST:"list_players",
-  SHOOT:"shoot"
+  SHOOT:"shoot",
+  SYNC_OBJ:"sync_all_objs"
 }
 const MAX_BULLETS = 200;
 
@@ -153,12 +154,13 @@ io.listen(8001); // default port is 9208
 
     channel.on(type_msg.SHOOT, data => {
       let _dtsh = JSON.parse(data);
-      console.log( " llego de shoot " );
-      console.log( _dtsh );
+      // console.log( " llego de shoot " );
+      // console.log( _dtsh );
       for(let _p=0;  _p < MAX_BULLETS; _p+=1){
         //TODO: aqui tipo d disparo, ojo
         if( !gb_bullets[_p].mode ){
           gb_bullets[_p].shoot(_dtsh);
+          break;
         }
       }
     });
@@ -176,12 +178,39 @@ function loop(){
     // io.room( rooms[0].players[0].id_room).emit(type_msg.SYNC, JSON.stringify(rooms[0].players_public));
     // console.log( "a enviar " );
     // console.log( JSON.stringify(rooms[0].players_public) );
+    for(let _p=0;  _p < MAX_BULLETS; _p+=1){
+      //TODO: aqui tipo d disparo, ojo
+      if( gb_bullets[_p].mode ){
+        gb_bullets[_p].update();        
+      }
+    }
 
     io.emit(type_msg.SYNC, JSON.stringify(rooms[0].players_public));
+
+    //collect bullets/missiles/rockets/mines mode true to send at all players.. 
+    let _all_obj = {};
+    _all_obj.bullets=[];
+    _all_obj.missiles=[];
+    _all_obj.rockets=[];
+    _all_obj.mines=[];
+
+    for(let _p=0;  _p < MAX_BULLETS; _p+=1){
+      //TODO: aqui tipo d disparo, ojo
+      if( gb_bullets[_p].mode ){
+        _all_obj.bullets.push({ix:gb_bullets[_p].index,px:gb_bullets[_p].pos_actual.x.toFixed(3),pz:gb_bullets[_p].pos_actual.z.toFixed(3),an:gb_bullets[_p].angle,ky:gb_bullets[_p].key});
+      }
+    }
+
+    if( _all_obj.bullets.length > 0 ){
+      
+      io.emit(type_msg.SYNC_OBJ, JSON.stringify(_all_obj));
+    }
+    
+    
   }
   
 }
 
 setInterval(()=>{
   loop();
-},20);
+},15);
