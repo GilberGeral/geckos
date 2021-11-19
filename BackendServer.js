@@ -1,5 +1,6 @@
 import geckos from '@geckos.io/server';
 import Player from './Player.js';
+import BalaServer from './BalaServer.js';
 import Room from './Room.js';
 
 const io = geckos();
@@ -11,8 +12,13 @@ const type_msg={
   STOP : "stop",
   EXIT : "exit",
   SYNC:"sinc",
-  LIST:"list_players"
+  LIST:"list_players",
+  SHOOT:"shoot"
 }
+const MAX_BULLETS = 200;
+
+const type_shoot = {BULLET:"1",ROCKET:"2",MISSILE:"3",MINE:"4"};
+
 
 const ships =["arpia","ast_1","ast_2","ast_3","ast_4","ast_5","ast_6", "flea", "gunner", "hawk", "raptor", "wasp" ];
 
@@ -22,21 +28,21 @@ let rooms =[];
 for(let _g=0; _g < max_rooms; _g+=1){
   rooms[_g] = new Room(_g);//array de rooms
 }
+let gb_bullets =[];
+for(let _t =0; _t < MAX_BULLETS; _t+=1){
+  gb_bullets[_t] = new BalaServer(_t);   
+}
 
 let gb_gamers=[];
 gb_gamers[0]={"nm":"pablo gonzales","user":"pablito", "pass":"1234","color":"1,0,0","ship":"raptor"};
 gb_gamers[1]={"nm":"juan alimaña","user":"juanito", "pass":"1234","color":"0,1,0","ship":"wasp"};
 
-function addPlayer( _a_key, _ch_id,_color='255,26,58',room_id=0,_ship = "raptor",_nombre="ND",_px=0,_pz=0){
+function addPlayer( _a_key,_ch_id,_color='255,26,58',room_id=0,_ship="raptor",_nombre="ND",_px=0,_pz=0){
   //por defecto SOLO una room
-  console.log( "ad player key "+_a_key+", room id "+room_id+", nombre "+_nombre );
-
-  
   rooms[0].players.push({key:_a_key,ch:_ch_id,id_room:room_id,color:_color,ship:_ship,name:_nombre,inix:_px,iniz:_pz});
-
   rooms[0].players_public.push({key:_a_key,px:_px,py:0.0,pz:_pz,rx:0.0,ry:0.0,rz:0.0,color:_color,ship:_ship,lf:0.0});
-  console.log( "largo room 0 de players "+rooms[0].players.length );
   return 0;
+
 }
 
 function updatePlayer( _dt ){
@@ -141,13 +147,23 @@ io.listen(8001); // default port is 9208
       // io.room(channel.roomId).emit('srv_cli', data);
     });
 
-    channel.on(type_msg.STOP, data => {
-     
+    channel.on(type_msg.STOP, data => {     
       io.room(channel.roomId).emit('srv_cli', data);
     });
 
+    channel.on(type_msg.SHOOT, data => {
+      let _dtsh = JSON.parse(data);
+      console.log( " llego de shoot " );
+      console.log( _dtsh );
+      for(let _p=0;  _p < MAX_BULLETS; _p+=1){
+        //TODO: aqui tipo d disparo, ojo
+        if( !gb_bullets[_p].mode ){
+          gb_bullets[_p].shoot(_dtsh);
+        }
+      }
+    });
+
     channel.on(type_msg.EXIT, data => {
-      
       io.room(channel.roomId).emit('srv_cli', data);
     });
 });
@@ -155,7 +171,7 @@ io.listen(8001); // default port is 9208
 function loop(){
   // rooms[0].sync();
   
-  if( rooms[0].players.length > 0 ){    
+  if( rooms[0].players.length > 0 ){
     // console.log( "debio loop ");
     // io.room( rooms[0].players[0].id_room).emit(type_msg.SYNC, JSON.stringify(rooms[0].players_public));
     // console.log( "a enviar " );
