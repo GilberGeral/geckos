@@ -1,7 +1,8 @@
 import geckos from '@geckos.io/server';
 import Player from './Player.js';
-import BalaServer from './BalaServer.js';
+import ServerBullet from './ServerBullet.js';
 import Room from './Room.js';
+
 
 const io = geckos();
 
@@ -16,6 +17,15 @@ const type_msg={
   SHOOT:"shoot",
   SYNC_OBJ:"sync_all_objs"
 }
+
+const MAX_ASTEROIDS=120;
+const ACTIVE_ROOM=0;
+let _all_obj = {};
+_all_obj.bullets=[];
+_all_obj.missiles=[];
+_all_obj.rockets=[];
+_all_obj.mines=[];
+
 const MAX_BULLETS = 200;
 
 const type_shoot = {BULLET:"1",ROCKET:"2",MISSILE:"3",MINE:"4"};
@@ -28,11 +38,13 @@ const players_per_room = 2;
 let rooms =[];
 for(let _g=0; _g < max_rooms; _g+=1){
   rooms[_g] = new Room(_g);//array de rooms
+  rooms[_g].makeBullets(MAX_BULLETS);
+  rooms[_g].makeAsteroids(MAX_ASTEROIDS);
 }
-let gb_bullets =[];
-for(let _t =0; _t < MAX_BULLETS; _t+=1){
-  gb_bullets[_t] = new BalaServer(_t);   
-}
+// let gb_bullets =[];
+// for(let _t =0; _t < MAX_BULLETS; _t+=1){
+//   gb_bullets[_t] = new ServerBullet(_t);   
+// }
 
 let gb_gamers=[];
 gb_gamers[0]={"nm":"pablo gonzales","user":"pablito", "pass":"1234","color":"1,0,0","ship":"raptor"};
@@ -81,40 +93,35 @@ io.listen(8001); // default port is 9208
     });
 
     channel.on(type_msg.DOOR, data => {
-      // console.log(`${channel.id} arrived data ** `);
       let _data ={"id_ch":channel.id,"mode":"guest"};
-      // io.room(channel.roomId).emit(type_msg.DOOR, JSON.stringify(_data));
       channel.emit(type_msg.DOOR, JSON.stringify(_data));
     });
 
     channel.on(type_msg.LOGIN, data => {
-      console.log( data );
+      // console.log( data );
 
       let _data = JSON.parse(data);
       console.log( " \n user login "+_data.u);
       
-      let _res={"done":false,"level":"1","nombre":"","ship":"main","color":"","id_room":"A","a_key":"","ship":"","inix":"","iniz":""};
+      let _res={"done":false,"level":"1","nombre":"","ship":"main","color":"","id_room":"A","a_key":"","ship":"","inix":"","iniz":"","asts":[]};
       let _px = random();
       let _pz = random();
 
-      // gb_gamers.forEach(_g => {
-        // if( _g.user == _data.u & _g.pass == _data.p ){
-        // if( 1 == 1){
-          _res.done = true;
-          
-          _res.nombre = _data.u;
-          _res.ship = _data.shp;
-          _res.color = _data.c;
-          _res.a_key = (Math.random() + 1).toString(36).substring(7);
+      
+      _res.done = true;
+      
+      _res.nombre = _data.u;
+      _res.ship = _data.shp;
+      _res.color = _data.c;
+      _res.a_key = (Math.random() + 1).toString(36).substring(7);
 
-          _res.id_room = addPlayer(_res.a_key,channel.id,_res.color,channel.roomId,_res.ship,_res.nombre,_px,_pz);
-          _res.inix = _px;
-          _res.iniz = _pz;
-          // console.log( _res );
-          // return;
-          // break;
-        // }
-      // });
+      _res.id_room = addPlayer(_res.a_key,channel.id,_res.color,channel.roomId,_res.ship,_res.nombre,_px,_pz);
+      _res.inix = _px;
+      _res.iniz = _pz;
+      
+      //get asteroids from game
+      _res.asts = rooms[ACTIVE_ROOM].asteroids;
+
 
       // io.room(channel.roomId).emit('login', JSON.stringify(_res));
       channel.emit(type_msg.LOGIN, JSON.stringify(_res));
@@ -158,8 +165,8 @@ io.listen(8001); // default port is 9208
       // console.log( _dtsh );
       for(let _p=0;  _p < MAX_BULLETS; _p+=1){
         //TODO: aqui tipo d disparo, ojo
-        if( !gb_bullets[_p].mode ){
-          gb_bullets[_p].shoot(_dtsh);
+        if( !rooms[ACTIVE_ROOM].bullets[_p].mode ){
+          rooms[ACTIVE_ROOM].bullets[_p].shoot(_dtsh);
           break;
         }
       }
@@ -180,37 +187,43 @@ function loop(){
     // console.log( JSON.stringify(rooms[0].players_public) );
     for(let _p=0;  _p < MAX_BULLETS; _p+=1){
       //TODO: aqui tipo d disparo, ojo
-      if( gb_bullets[_p].mode ){
-        gb_bullets[_p].update();        
+      if( rooms[ACTIVE_ROOM].bullets[_p].mode ){
+        rooms[ACTIVE_ROOM].bullets[_p].update();        
       }
     }
 
     io.emit(type_msg.SYNC, JSON.stringify(rooms[0].players_public));
-
-    //collect bullets/missiles/rockets/mines mode true to send at all players.. 
-    let _all_obj = {};
-    _all_obj.bullets=[];
-    _all_obj.missiles=[];
-    _all_obj.rockets=[];
-    _all_obj.mines=[];
-
-    for(let _p=0;  _p < MAX_BULLETS; _p+=1){
-      //TODO: aqui tipo d disparo, ojo
-      if( gb_bullets[_p].mode ){
-        _all_obj.bullets.push({ix:gb_bullets[_p].index,px:gb_bullets[_p].pos_actual.x.toFixed(3),pz:gb_bullets[_p].pos_actual.z.toFixed(3),an:gb_bullets[_p].angle,ky:gb_bullets[_p].key});
-      }
-    }
-
-    if( _all_obj.bullets.length > 0 ){
-      
-      io.emit(type_msg.SYNC_OBJ, JSON.stringify(_all_obj));
-    }
-    
     
   }
   
 }
 
+function loop_bullets(){
+  //collect bullets/missiles/rockets/mines mode true to send at all players.. 
+  _all_obj.bullets=[];
+  _all_obj.missiles=[];
+  _all_obj.rockets=[];
+  _all_obj.mines=[];
+
+  for(let _p=0;  _p < MAX_BULLETS; _p+=1){
+    //TODO: aqui tipo d disparo, ojo
+    if( rooms[ACTIVE_ROOM].bullets[_p].mode & !rooms[ACTIVE_ROOM].bullets[_p].sinc){
+      rooms[ACTIVE_ROOM].bullets[_p].sinc=true;
+      _all_obj.bullets.push({ix:rooms[ACTIVE_ROOM].bullets[_p].index,px:rooms[ACTIVE_ROOM].bullets[_p].pos_actual.x.toFixed(3),pz:rooms[ACTIVE_ROOM].bullets[_p].pos_actual.z.toFixed(3),an:rooms[ACTIVE_ROOM].bullets[_p].angle,ky:rooms[ACTIVE_ROOM].bullets[_p].key});
+    }
+  }
+
+  
+  if( _all_obj.bullets.length > 0 ){      
+    io.emit(type_msg.SYNC_OBJ, JSON.stringify(_all_obj));
+  }
+
+}
+
 setInterval(()=>{
   loop();
-},15);
+},25);
+
+setInterval(()=>{
+  loop_bullets();
+},5);

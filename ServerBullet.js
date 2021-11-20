@@ -1,4 +1,4 @@
-class BalaServer{
+class ServerBullet{
   constructor(_index){
     this.index = _index;
     this.percent = 0.0;
@@ -8,7 +8,7 @@ class BalaServer{
     this.step = 0.0075;
     this.key = '';
     this.LIMIT = 1.2;
-    
+    this.sinc = false;
     this.pos_actual = {x:0.0,z:0.0}
   }
 
@@ -17,6 +17,7 @@ class BalaServer{
     this.percent = 0.0;
     this.pos = [0.0,0.0,0.0,0.0];//inix,iniy, endx,endy
     this.key = '';
+    this.sinc = false;
   }
 
   shoot(_dt){
@@ -28,8 +29,9 @@ class BalaServer{
     this.pos[3] = parseFloat(_dt.y2);
     this.key = _dt.key;
     this.angle = parseFloat(_dt.an);
-    this.pos_actual.x = 0.0;
-    this.pos_actual.z = 0.0;
+    // this.pos_actual.x = 0.0;
+    // this.pos_actual.z = 0.0;
+    this.getPositionAlongTheLine();
   }
 
   getPositionAlongTheLine() {
@@ -49,4 +51,4 @@ class BalaServer{
   
 }
 
-export default BalaServer;
+export default ServerBullet;
