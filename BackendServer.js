@@ -22,6 +22,7 @@ const MAX_ASTEROIDS=120;
 const ACTIVE_ROOM=0;
 let _all_obj = {};
 _all_obj.bullets=[];
+_all_obj.asteroids=[];
 _all_obj.missiles=[];
 _all_obj.rockets=[];
 _all_obj.mines=[];
@@ -36,16 +37,14 @@ const ships =["arpia","ast_1","ast_2","ast_3","ast_4","ast_5","ast_6", "flea", "
 const max_rooms = 1;
 const players_per_room = 2;
 let rooms =[];
+
 for(let _g=0; _g < max_rooms; _g+=1){
   rooms[_g] = new Room(_g);//array de rooms
   rooms[_g].makeBullets(MAX_BULLETS);
   rooms[_g].makeAsteroids(MAX_ASTEROIDS);
 }
-// let gb_bullets =[];
-// for(let _t =0; _t < MAX_BULLETS; _t+=1){
-//   gb_bullets[_t] = new ServerBullet(_t);   
-// }
 
+//estos deben venir de redis
 let gb_gamers=[];
 gb_gamers[0]={"nm":"pablo gonzales","user":"pablito", "pass":"1234","color":"1,0,0","ship":"raptor"};
 gb_gamers[1]={"nm":"juan alimaña","user":"juanito", "pass":"1234","color":"0,1,0","ship":"wasp"};
@@ -101,13 +100,12 @@ io.listen(8001); // default port is 9208
       // console.log( data );
 
       let _data = JSON.parse(data);
-      console.log( " \n user login "+_data.u);
+      // console.log( " \n user login "+_data.u);
       
       let _res={"done":false,"level":"1","nombre":"","ship":"main","color":"","id_room":"A","a_key":"","ship":"","inix":"","iniz":"","asts":[]};
       let _px = random();
       let _pz = random();
 
-      
       _res.done = true;
       
       _res.nombre = _data.u;
@@ -120,8 +118,15 @@ io.listen(8001); // default port is 9208
       _res.iniz = _pz;
       
       //get asteroids from game
-      _res.asts = rooms[ACTIVE_ROOM].asteroids;
-
+      _res.asts = [];
+      rooms[ACTIVE_ROOM].asteroids.forEach(_ast => {
+        if( _ast.mode ){
+          _res.asts.push(_ast);
+        }
+      });
+      
+      console.log( "en login de "+_res.nombre+" envio "+_res.asts.length+" asteroides " );
+      // _res.asts = rooms[ACTIVE_ROOM].asteroids;
 
       // io.room(channel.roomId).emit('login', JSON.stringify(_res));
       channel.emit(type_msg.LOGIN, JSON.stringify(_res));
@@ -161,12 +166,13 @@ io.listen(8001); // default port is 9208
 
     channel.on(type_msg.SHOOT, data => {
       let _dtsh = JSON.parse(data);
-      // console.log( " llego de shoot " );
-      // console.log( _dtsh );
+      console.log( " llego de shoot " );
+      console.log( _dtsh );
       for(let _p=0;  _p < MAX_BULLETS; _p+=1){
         //TODO: aqui tipo d disparo, ojo
         if( !rooms[ACTIVE_ROOM].bullets[_p].mode ){
           rooms[ACTIVE_ROOM].bullets[_p].shoot(_dtsh);
+          // console.log( "debio disparar "+_p );
           break;
         }
       }
@@ -181,14 +187,11 @@ function loop(){
   // rooms[0].sync();
   
   if( rooms[0].players.length > 0 ){
-    // console.log( "debio loop ");
-    // io.room( rooms[0].players[0].id_room).emit(type_msg.SYNC, JSON.stringify(rooms[0].players_public));
-    // console.log( "a enviar " );
-    // console.log( JSON.stringify(rooms[0].players_public) );
+    
     for(let _p=0;  _p < MAX_BULLETS; _p+=1){
       //TODO: aqui tipo d disparo, ojo
       if( rooms[ACTIVE_ROOM].bullets[_p].mode ){
-        rooms[ACTIVE_ROOM].bullets[_p].update();        
+        rooms[ACTIVE_ROOM].bullets[_p].update(rooms[ACTIVE_ROOM].asteroids);        
       }
     }
 
@@ -201,6 +204,7 @@ function loop(){
 function loop_bullets(){
   //collect bullets/missiles/rockets/mines mode true to send at all players.. 
   _all_obj.bullets=[];
+  _all_obj.asteroids=[];
   _all_obj.missiles=[];
   _all_obj.rockets=[];
   _all_obj.mines=[];
@@ -208,13 +212,28 @@ function loop_bullets(){
   for(let _p=0;  _p < MAX_BULLETS; _p+=1){
     //TODO: aqui tipo d disparo, ojo
     if( rooms[ACTIVE_ROOM].bullets[_p].mode & !rooms[ACTIVE_ROOM].bullets[_p].sinc){
+      // console.log( "bala nacio "+_p);
       rooms[ACTIVE_ROOM].bullets[_p].sinc=true;
       _all_obj.bullets.push({ix:rooms[ACTIVE_ROOM].bullets[_p].index,px:rooms[ACTIVE_ROOM].bullets[_p].pos_actual.x.toFixed(3),pz:rooms[ACTIVE_ROOM].bullets[_p].pos_actual.z.toFixed(3),an:rooms[ACTIVE_ROOM].bullets[_p].angle,ky:rooms[ACTIVE_ROOM].bullets[_p].key});
+    
+    }
+  }
+  
+  for(let _p=0;  _p < MAX_BULLETS; _p+=1){
+    if( !rooms[ACTIVE_ROOM].bullets[_p].mode & !rooms[ACTIVE_ROOM].bullets[_p].sinc){      
+      rooms[ACTIVE_ROOM].bullets[_p].sinc=true;
+      _all_obj.bullets.push({ix:rooms[ACTIVE_ROOM].bullets[_p].index,px:rooms[ACTIVE_ROOM].bullets[_p].pos_actual.x.toFixed(3),pz:rooms[ACTIVE_ROOM].bullets[_p].pos_actual.z.toFixed(3),kll:1,prc:rooms[ACTIVE_ROOM].bullets[_p].percent.toFixed(2)});
     }
   }
 
+  for(let _p=0;  _p < MAX_ASTEROIDS; _p+=1){
+    if( !rooms[ACTIVE_ROOM].asteroids[_p].mode & !rooms[ACTIVE_ROOM].asteroids[_p].sinc){      
+      rooms[ACTIVE_ROOM].asteroids[_p].sinc=true;
+      _all_obj.asteroids.push({ix:_p,kll:1});
+    }
+  }
   
-  if( _all_obj.bullets.length > 0 ){      
+  if( _all_obj.bullets.length > 0 | _all_obj.asteroids.length > 0  ){      
     io.emit(type_msg.SYNC_OBJ, JSON.stringify(_all_obj));
   }
 
